@@ -1,10 +1,10 @@
+import json
 from flask import Flask, request, jsonify, send_from_directory, url_for
 import pandas as pd
 import os
 import uuid
 
 app = Flask(__name__)
-
 OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -41,12 +41,14 @@ def export_api():
         schema = payload.get("schema")
         data = payload.get("data")
 
-        if not schema or not data:
-            return jsonify({"error": "請提供 schema 與 data"}), 400
+        # 如果 schema 或 data 是字串，就轉成 dict
+        if isinstance(schema, str):
+            schema = json.loads(schema)
+        if isinstance(data, str):
+            data = json.loads(data)
 
         filename = f"{uuid.uuid4().hex}.xlsx"
         output_path = os.path.join(OUTPUT_DIR, filename)
-
         export_to_excel(schema, data, output_path)
 
         download_url = url_for("download_file", filename=filename, _external=True)
@@ -58,6 +60,3 @@ def export_api():
 @app.route("/download/<filename>", methods=["GET"])
 def download_file(filename):
     return send_from_directory(OUTPUT_DIR, filename, as_attachment=True)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
